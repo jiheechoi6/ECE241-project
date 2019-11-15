@@ -1,7 +1,7 @@
 // graphing unit for general first, whenever we are gonna use 
 // we need to create different module for each controller by adding different RAM inside.
 
-module blitz_gu
+module prince_gu
 	(
 		clk,
 		y_in,
@@ -160,7 +160,7 @@ module b_data_path(
 	
 	wire [10:0] address;
 	assign address = {y_increment, x_increment};
-	blitz_image bi1(address,clk,3'b0,1'b0,colour_out);
+	prince_image bi1(address,clk,3'b0,1'b0,colour_out);
 	
 	always@(posedge clk) begin
 		if(!resetn) begin
