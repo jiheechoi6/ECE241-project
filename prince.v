@@ -1,4 +1,4 @@
-module position (
+module prince (
 	input go_up,
 	input go_down,
 	input clk,
