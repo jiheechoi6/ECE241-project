@@ -1,54 +1,171 @@
-
-module project(CLOCK_50, 
-	SW, KEY, //my inputs
-	VGA_CLK,   						//	VGA Clock
-	VGA_HS,							//	VGA H_SYNC
-	VGA_VS,							//	VGA V_SYNC
-	VGA_BLANK_N,						//	VGA BLANK
-	VGA_SYNC_N,						//	VGA SYNC
-	VGA_R,   						//	VGA Red[9:0]
-	VGA_G,	 						//	VGA Green[9:0]
-	VGA_B   						//	VGA Blue[9:0]
+// top module
+module graph
+	(
+		CLOCK_50,						//	On Board 50 MHz
+		KEY,
+		SW,
+		HEX0,
+		HEX1,
+		HEX2,
+		HEX3,
+		// Your inputs and outputs here
+		// The ports below are for the VGA output.  Do not change.
+		VGA_CLK,   						//	VGA Clock
+		VGA_HS,							//	VGA H_SYNC
+		VGA_VS,							//	VGA V_SYNC
+		VGA_BLANK_N,						//	VGA BLANK
+		VGA_SYNC_N,						//	VGA SYNC
+		VGA_R,   						//	VGA Red[9:0]
+		VGA_G,	 						//	VGA Green[9:0]
+		VGA_B   						//	VGA Blue[9:0]
 	);
-	
-	input CLOCK_50;
-	input [3:0] KEY;
-	input [9:0] SW;
+	output [6:0] HEX0, HEX1, HEX2, HEX3;
+	input			CLOCK_50;				//	50 MHz
+	input	[3:0]	KEY;
+	input	[9:0]	SW;
+	// Declare your inputs and outputs here
+	// Do not change the following outputs
 	output			VGA_CLK;   				//	VGA Clock
 	output			VGA_HS;					//	VGA H_SYNC
 	output			VGA_VS;					//	VGA V_SYNC
 	output			VGA_BLANK_N;				//	VGA BLANK
 	output			VGA_SYNC_N;				//	VGA SYNC
-	output	[7:0]	VGA_R;   				//	VGA Red[7:0] Changed from 10 to 8-bit DAC
-	output	[7:0]	VGA_G;	 				//	VGA Green[7:0]
-	output	[7:0]	VGA_B;   				//	VGA Blue[7:0]
-
-	wire resetn, go, clear, plt_key;
-	assign resetn = KEY[0];
-	assign plt_key = ~KEY[1];
-	assign clear = ~KEY[2];
-	assign go= ~KEY[3];
-
-	wire ld_y, ld_clr, enable_blk, enable_plt;
-	wire ld_x = go;
-	wire [5:0] counter_plt;
-	wire [7:0] counter_X;
-	wire [6:0] counter_Y;
+	output	[9:0]	VGA_R;   				//	VGA Red[9:0]
+	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
+	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
+	
+	wire resetn;
+	reg go_up, go_down, grab;
+	reg go_up_buf, go_down_buf, grab_buf;
+	reg restart;
+	assign resetn = KEY[0] && !restart;
+	
+	
 	// Create the colour, x, y and writeEn wires that are inputs to the controller.
 
-	wire [2:0] colour;
-	wire [7:0] x;
-	wire [6:0] y;
-	wire writeEn; //plot
+	reg [2:0] colour;
+	reg [8:0] x;
+	reg [7:0] y;
+	
+	wire [18:0]	writeEn; //0 -> blitz, 1-9 -> poro, 10 ->BG, ll -> hook, 12 -> arm, 13->trailer, 14->hp, 15-17 -> scores, 18 -> gameover
+	reg writeEn_vga;
+	
+	reg [18:0]	plot; //0 -> blitz, 1-9 -> poro, 10 ->BG, ll -> hook, 12 -> arm, 13 -> trailer, 14 -> hp, 15-17 -> scores, 18 -> gameover
+	wire [18:0]  done; //0 -> blitz, 1-9 -> poro, 10 ->BG, ll -> hook, 12 -> arm, 13 -> trailer, 14 -> hp, 15-17 -> scores, 18 -> gameover
+	wire clk;
+	wire frame; // empty for now
+	
+	DelayCounter dc(.clock(CLOCK_50), .reset_n(resetn), .maxcount(28'd833334), .enable(frame)); //60 fps
+	
+	assign clk = CLOCK_50;
+	
+	always@(posedge clk) begin
+		go_up_buf <= ~KEY[3];
+		go_down_buf <= ~KEY[2];
+		grab_buf <= gameOver ? 1'b0 : ~KEY[1];
+	end 
+	
+	always@(posedge clk) begin
+		go_up <= go_up_buf;
+		go_down <=go_down_buf;
+		grab <= grab_buf;
+	end
+	
+	//========================= control and gu connection =================================
+	wire [7:0] blitz_y;
+	wire [7:0] plot_y_b; //bh for blitz hook, ba for arm
+	wire [8:0] plot_x_b;
+	wire [2:0] colour_b;
 
-	vga_adapter VGA(
-			.resetn(resetn),
+	// *blitz
+
+	blitz_pos 		blitz(go_up,go_down,clk,frame,resetn,grab, blitz_grab_success,blitz_hook_x,blitz_hook_y,blitz_y);
+
+	// *FSM //************do we need the FSM??
+
+	reg [4:0] current_state, next_state;
+
+	localparam  S_PLOT_WAIT	     		= 5'd0, 
+				//S_PLOT_BG	     		= 5'd1, 
+				S_PLOT_BLITZ     		= 5'd11,
+				//S_PLOT_ONES				= 5'd17,
+				//S_PLOT_TENS				= 5'd18,
+				//S_PLOT_HUNDRES			= 5'd19,
+				
+	always@(*)
+    begin: state_table 
+
+            case (current_state)
+
+				//S_PLOT_TRAILER: next_state = (swap) ? S_RESTART : S_PLOT_TRAILER;
+				//S_RESTART: next_state = S_PLOT_WAIT;
+				//S_PLOT_WAIT: next_state = (swap) ? S_PLOT_BG : S_PLOT_WAIT;
+				//S_PLOT_BG:	 next_state = done[10] ? S_PLOT_P0 : S_PLOT_BG;
+				S_PLOT_BLITZ_HOOK: next_state = done[11] ? S_PLOT_BLITZ: S_PLOT_BLITZ_HOOK;		
+				S_PLOT_BLITZ: next_state = done[0] ? S_PLOT_HP: S_PLOT_BLITZ;
+				S_PLOT_HP: next_state = done[14] ? S_PLOT_GAMEOVER: S_PLOT_HP;
+				S_PLOT_GAMEOVER:next_state = gameOver ? (done[18] ? S_PLOT_ONES: S_PLOT_GAMEOVER) : S_PLOT_ONES;
+				//S_PLOT_ONES:	next_state = done[15] ? S_PLOT_TENS: S_PLOT_ONES;
+				//S_PLOT_TENS: 	next_state = done[16] ? S_PLOT_HUNDRES: S_PLOT_TENS;
+				//S_PLOT_HUNDRES: next_state = done[17] ? S_PLOT_WAIT: S_PLOT_HUNDRES;
+            default:     next_state = S_PLOT_WAIT;
+
+		endcase
+
+    end // state_table
+	
+	always@(*)
+    begin
+	plot = 19'b0;
+	restart = 1'b0;
+			case (current_state)				
+				//S_PLOT_BG:		plot[10]=1'b1;
+				S_PLOT_BLITZ: 	plot[0]=1'b1;
+				//S_PLOT_HP:		plot[14]=1'b1;
+				//S_PLOT_TRAILER:	plot[13]=1'b1;
+				//S_PLOT_ONES:   	plot[15]=1'b1;
+				//S_PLOT_TENS:  	plot[16]=1'b1;
+				//S_PLOT_HUNDRES: plot[17]=1'b1;
+				default: plot = 19'b0;
+		endcase
+    end 
+
+	// current_state registers
+    always@(posedge clk)
+    begin
+		if(SW[0] == 0)
+		    current_state <= S_PLOT_TRAILER;
+        else
+            current_state <= next_state;
+    end 
+	// *mux
+	always@(posedge clk)
+    begin
+			case (current_state)
+				//S_PLOT_BG:	    	begin x=plot_x_bg; y=plot_y_bg; colour=colour_bg; writeEn_vga=writeEn[10];		end
+				S_PLOT_BLITZ:   	begin x=plot_x_b;  y=plot_y_b;  colour=colour_b;  writeEn_vga=writeEn[0];  		end
+				//S_PLOT_HP:      	begin x=plot_x_hp; y=plot_y_hp; colour=colour_hp; writeEn_vga=writeEn[14];		end
+				//S_PLOT_TRAILER:   	begin x=plot_x_tl; y=plot_y_tl; colour=colour_tl; writeEn_vga=writeEn[13];		end
+				//S_PLOT_ONES:   		begin x=plot_x_so; y=plot_y_so; colour=colour_so; writeEn_vga=writeEn[15];		end
+				//S_PLOT_TENS:  	 	begin x=plot_x_st; y=plot_y_st; colour=colour_st; writeEn_vga=writeEn[16];		end
+				//S_PLOT_HUNDRES:   	begin x=plot_x_sh; y=plot_y_sh; colour=colour_sh; writeEn_vga=writeEn[17];		end
+		endcase
+    end 
+	
+	wire swap;
+	// Create an Instance of a VGA controller - there can be only one!
+	// Define the number of colours as well as the initial background
+	// image file (.MIF) for the controller.
+	vga_adapter_2buffers VGA(
+			.frame(frame),
+			.swap(swap),
+			.resetn(KEY[0]),
 			.clock(CLOCK_50),
 			.colour(colour),
 			.x(x),
 			.y(y),
-			.plot(writeEn),
-		
+			.plot(writeEn_vga),
+			 //Signals for the DAC to drive the monitor. 
 			.VGA_R(VGA_R),
 			.VGA_G(VGA_G),
 			.VGA_B(VGA_B),
@@ -57,233 +174,35 @@ module project(CLOCK_50,
 			.VGA_BLANK(VGA_BLANK_N),
 			.VGA_SYNC(VGA_SYNC_N),
 			.VGA_CLK(VGA_CLK));
-			
-	defparam VGA.RESOLUTION = "160x120";
-	defparam VGA.MONOCHROME = "FALSE";
-	defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
-	defparam VGA.BACKGROUND_IMAGE = "black.mif";
-
-	datapath d(CLOCK_50, resetn, ld_x, ld_y, ld_clr, enable_plt, enable_blk, SW[6:0], SW[9:7], x, y, colour, counter_plt, counter_X, counter_Y);
-	control c(CLOCK_50, resetn, plt_key, clear, go, counter_X, counter_Y, counter_plt,ld_y, ld_clr, writeEn, enable_plt, enable_blk);
-   position p(go_up, go_down, clk, frame, resetn);
+		defparam VGA.RESOLUTION = "320x240";
+		defparam VGA.MONOCHROME = "FALSE";
+		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
+		defparam VGA.BACKGROUND_IMAGE = "background.mif";
+	
+	// Put your code here. Your code should produce signals x,y,colour and writeEn
+	// for the VGA controller, in addition to any other functionality your design may require.
+	
 	
 endmodule
 
-module datapath(input clk, resetn, ld_x, ld_y, ld_clr, enable_plt, enable_blk,
-		input [7:0] datain,
-		input [2:0] clr,
-		output reg [7:0] X,
-		output reg [6:0] Y,
-		output reg [2:0] CLR,
-		output reg [5:0] CounterA,
-		output reg [7:0] CounterX,
-		output reg [6:0] CounterY
-		);
-	reg [6:0] x_ini, y_ini;
-	//loading registers
-	always@(posedge clk)
+
+//=====================================Delay counter======================================
+module DelayCounter(clock, reset_n, maxcount, enable);
+	input clock, reset_n;
+	input [27:0] maxcount;
+	output enable;
+	reg [27:0] count;
+	
+	assign enable = (count == 0) ? (1'b1) : (1'b0);
+		
+	always @ (posedge clock, negedge reset_n)
 	begin
-	if(!resetn)
-	begin
-		X<=8'b0;
-		Y<=7'b0;
-		CLR<= 3'b0;
-		CounterA<= 6'b0;
-		CounterX <= 8'b0;
-		CounterY <= 7'b0;
-	end
-	else
-	begin
-	if (ld_x) begin
-		X<=datain;
-		x_ini <= datain; end
-	if(ld_y) begin
-		Y<=datain;
-		y_ini <= datain; end
-	if(ld_clr)
-		CLR<=clr;
-	if(enable_plt == 1'b1)
-	begin
-		if (CounterA == 6'b10000) CounterA<= 6'b0;
-		else CounterA<=CounterA+1;
-		X <= x_ini + CounterA[1:0];
-		Y <= y_ini + CounterA[3:2];
-	end
-	if(enable_blk)
-	begin
-		if (CounterX == 8'd160 && CounterY!= 7'd120) begin
-			CounterX <= 8'b0;
-			CounterY <= CounterY +1;
-		end
+		if (!reset_n)
+			count <= 0;
+		else if (count == (maxcount-28'b1))
+			count <= 0;
 		else
-			CounterX <= CounterX+1;
-		X<= CounterX;
-		Y<= CounterY;
-		CLR <= 3'b0;
-	end
-		
-	end
+			count <= count + 1'b1;
 	end
 
-	//adding location to x and y 
 endmodule
-
-module control(input clk, resetn, plt_key, clear, go, 
-		input [7:0] CounterX,
-		input [6:0] CounterY,
-		input [5:0] counter_plt, 
-		output reg ld_y, ld_clr, plot, enable_plt, enable_blk);
-	
-	reg [2:0] current_state, next_state;
-
-	localparam S0 = 3'b0,
-	S1= 3'b001,
-	S1_WAIT = 3'b010,
-	S2= 3'b011,
-	DRAW= 3'b100,
-	BLK= 3'b101;
-
-	//next state logic
-	always@(*)
-	begin: state_table
-		case(current_state)
-			S0: begin
-			if (go == 1'b1) next_state = S1;
-			if (go ==1'b0) next_state = S0; 
-			end
-			S1: next_state = go ? S1: S1_WAIT;
-			S1_WAIT: begin
-				if (clear == 1'b1) next_state = BLK;
-				if (plt_key == 1'b1) next_state = S2;
-				else if (resetn == 1'b0) next_state = S1_WAIT;
-			end
-			S2: next_state = DRAW;
-			DRAW: begin
-				if (counter_plt <= 6'd15) next_state = DRAW;
-				else next_state= S1_WAIT;
-				end
-			BLK : begin
-				//next_state = (CounterX == 8'd160 & CounterY == 7'd120) ? S1_WAIT : BLK;
-				if(CounterX != 8'd160 & CounterY != 7'd120) next_state = BLK;
-				else next_state = S1_WAIT;
-			end
-			default: next_state= S1_WAIT;
-		endcase
-	end 
-
-	//control signals
-	always@(*)
-	begin: enable_signals
-	//reset all enable signals
-	//ld_x =1'b0;
-	ld_y = 1'b0;
-	ld_clr= 1'b0; 
-	plot = 1'b0; 
-	enable_plt = 1'b0;
-	enable_blk = 1'b0;
-	
-	case(current_state)
-		//S1: ld_x = 1'b1;
-		S2: begin
-			ld_y= 1'b1;
-			ld_clr= 1'b1;
-		end
-		DRAW: begin
-			plot = 1'b1;
-			enable_plt = 1'b1;
-			ld_clr = 1'b1;
-		end
-		BLK: begin
-			plot = 1'b1;
-			enable_blk = 1'b1;
-		end
-	endcase
-	end
-
-	// current_state registers
-    	always@(posedge clk)
-    	begin: state_FFs
-        	if(!resetn)
-            		current_state <= S1_WAIT;
-			else if (clear)
-					current_state <= BLK;
-        	else
-            	current_state <= next_state;
-    	end // state_FFS
-	
-
-endmodule 
-
-
-module position (
-	input go_up,
-	input go_down,
-	input clk,
-	input frame,
-	input resetn,
-	output reg [7:0] y
-	// output reg writeEn
-	);
-	
-	localparam S_SATIONARY =3'd0,
-			   S_MOVE_UP   =3'd1,
-			   S_MOVE_DOWN =3'd2,
-	
-	reg [2:0] current_state, next_state;
-	reg up_done, down_done;
-		
-	// next state logic
-	always @(*) begin
-		case(current_state)
-			S_SATIONARY: next_state = (go_up&&(y>8'd48)) ? S_MOVE_UP : ((go_down&&(y<8'd138)) ? S_MOVE_DOWN : (grab ? S_HOOK_EXTENTION : S_SATIONARY));
-			S_MOVE_UP: next_state = up_done ? S_SATIONARY : S_MOVE_UP;
-			S_MOVE_DOWN : next_state = down_done ? S_SATIONARY : S_MOVE_DOWN;
-			default: next_state = S_SATIONARY;
-		endcase
-	end
-	
-	
-	//enable signals
-	always@ (posedge clk) begin
-		if (!resetn) begin
-			y <= 8'd120 - 8'b1;
-			up_done <= 0;
-			down_done <= 0;
-		end 
-		
-		else begin
-			case(current_state)
-				S_SATIONARY: 
-				begin 
-					up_done <= 0;
-					down_done <= 0;
-				end
-				
-				S_MOVE_UP: if(frame) 
-				begin
-					y <= y - 8'd2;
-					up_done <= 1;
-				end 
-				
-				S_MOVE_DOWN: if(frame) 
-				begin 
-					y <= y + 8'd2;
-					down_done <= 1;
-				end
-				
-			endcase
-		
-		end 
-		
-	end 
-	
-	// current_state registers
-    always@(posedge clk)
-    begin
-        if(!resetn)
-            current_state <= S_SATIONARY;
-        else
-            current_state <= next_state;
-    end 
-	
-endmodule 
