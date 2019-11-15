@@ -51,7 +51,7 @@ module graph
 	reg writeEn_vga;
 	
 	reg [18:0]	plot; //0 -> blitz, 1-9 -> poro, 10 ->BG, ll -> hook, 12 -> arm, 13 -> trailer, 14 -> hp, 15-17 -> scores, 18 -> gameover
-	wire [18:0]  done; //0 -> blitz, 1-9 -> poro, 10 ->BG, ll -> hook, 12 -> arm, 13 -> trailer, 14 -> hp, 15-17 -> scores, 18 -> gameover
+	wire [0:0] done; //0 -> blitz, 1-9 -> poro, 10 ->BG, ll -> hook, 12 -> arm, 13 -> trailer, 14 -> hp, 15-17 -> scores, 18 -> gameover
 	wire clk;
 	wire frame; // empty for now
 	
@@ -81,7 +81,7 @@ module graph
 
 	blitz_pos 		blitz(go_up,go_down,clk,frame,resetn,grab, blitz_grab_success,blitz_hook_x,blitz_hook_y,blitz_y);
 
-	// *FSM //************do we need the FSM??
+	// *FSM //************do we need the FSM?? I think we do
 
 	reg [4:0] current_state, next_state;
 
@@ -101,10 +101,14 @@ module graph
 				//S_RESTART: next_state = S_PLOT_WAIT;
 				//S_PLOT_WAIT: next_state = (swap) ? S_PLOT_BG : S_PLOT_WAIT;
 				//S_PLOT_BG:	 next_state = done[10] ? S_PLOT_P0 : S_PLOT_BG;
-				S_PLOT_BLITZ_HOOK: next_state = done[11] ? S_PLOT_BLITZ: S_PLOT_BLITZ_HOOK;		
-				S_PLOT_BLITZ: next_state = done[0] ? S_PLOT_HP: S_PLOT_BLITZ;
-				S_PLOT_HP: next_state = done[14] ? S_PLOT_GAMEOVER: S_PLOT_HP;
-				S_PLOT_GAMEOVER:next_state = gameOver ? (done[18] ? S_PLOT_ONES: S_PLOT_GAMEOVER) : S_PLOT_ONES;
+				//S_PLOT_BLITZ_HOOK: next_state = done[11] ? S_PLOT_BLITZ: S_PLOT_BLITZ_HOOK;		
+		    
+		    S_PLOT_BLITZ: next_state = done[0] ? S_PLOT_HP: S_PLOT_BLITZ; 
+		    
+		   //need to eliminate s_plot_HP probably we don't even neet the always statement!
+		    
+				//S_PLOT_HP: next_state = done[14] ? S_PLOT_GAMEOVER: S_PLOT_HP;
+				//S_PLOT_GAMEOVER:next_state = gameOver ? (done[18] ? S_PLOT_ONES: S_PLOT_GAMEOVER) : S_PLOT_ONES;
 				//S_PLOT_ONES:	next_state = done[15] ? S_PLOT_TENS: S_PLOT_ONES;
 				//S_PLOT_TENS: 	next_state = done[16] ? S_PLOT_HUNDRES: S_PLOT_TENS;
 				//S_PLOT_HUNDRES: next_state = done[17] ? S_PLOT_WAIT: S_PLOT_HUNDRES;
@@ -181,7 +185,6 @@ module graph
 	
 	// Put your code here. Your code should produce signals x,y,colour and writeEn
 	// for the VGA controller, in addition to any other functionality your design may require.
-	
 	
 endmodule
 
