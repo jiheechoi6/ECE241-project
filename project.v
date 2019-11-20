@@ -1,5 +1,5 @@
 // top module
-module graph
+module Project
 	(
 		CLOCK_50,						//	On Board 50 MHz
 		KEY,
@@ -35,8 +35,8 @@ module graph
 	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
 	
 	wire resetn;
-	reg go_up, go_down, grab;
-	reg go_up_buf, go_down_buf, grab_buf;
+	reg go_up, go_down;
+	reg go_up_buf, go_down_buf;
 	reg restart;
 	assign resetn = KEY[0] && !restart;
 	
@@ -47,11 +47,11 @@ module graph
 	reg [8:0] x;
 	reg [7:0] y;
 	
-	wire [18:0]	writeEn; //0 -> blitz, 1-9 -> poro, 10 ->BG, ll -> hook, 12 -> arm, 13->trailer, 14->hp, 15-17 -> scores, 18 -> gameover
+	wire [0:0]	writeEn; 
 	reg writeEn_vga;
 	
-	reg [18:0]	plot; //0 -> blitz, 1-9 -> poro, 10 ->BG, ll -> hook, 12 -> arm, 13 -> trailer, 14 -> hp, 15-17 -> scores, 18 -> gameover
-	wire [0:0] done; //0 -> blitz, 1-9 -> poro, 10 ->BG, ll -> hook, 12 -> arm, 13 -> trailer, 14 -> hp, 15-17 -> scores, 18 -> gameover
+	reg [0:0]	plot; 
+	wire [0:0] done;
 	wire clk;
 	wire frame; // empty for now
 	
@@ -62,78 +62,28 @@ module graph
 	always@(posedge clk) begin
 		go_up_buf <= ~KEY[3];
 		go_down_buf <= ~KEY[2];
-		grab_buf <= gameOver ? 1'b0 : ~KEY[1];
+		
 	end 
 	
 	always@(posedge clk) begin
 		go_up <= go_up_buf;
 		go_down <=go_down_buf;
-		grab <= grab_buf;
 	end
 	
-	//========================= control and gu connection =================================
+	//==========================================================
 	wire [7:0] blitz_y;
-	wire [7:0] plot_y_b; //bh for blitz hook, ba for arm
-	wire [8:0] plot_x_b;
-	wire [2:0] colour_b;
+	wire [7:0] plot_y_p;
+	wire [8:0] plot_x_p;
+	wire [2:0] colour_p;
 
-	// *blitz
-
-	blitz_pos 		blitz(go_up,go_down,clk,frame,resetn,grab, blitz_grab_success,blitz_hook_x,blitz_hook_y,blitz_y);
-
-	// *FSM //************do we need the FSM?? I think we do
+	prince_move 	motion(go_up, go_down, clk, frame, resetn, blitz_y);
+	prince_gu		p_gu(clk, blitz_y, resetn, plot[0], colour_p, plot_x_p, plot_y_p, writeEn[0], done[0]);
 
 	reg [4:0] current_state, next_state;
-
-	localparam  S_PLOT_WAIT	     		= 5'd0, 
-				//S_PLOT_BG	     		= 5'd1, 
-				S_PLOT_BLITZ     		= 5'd11,
-				//S_PLOT_ONES				= 5'd17,
-				//S_PLOT_TENS				= 5'd18,
-				//S_PLOT_HUNDRES			= 5'd19,
-				
-	always@(*)
-    begin: state_table 
-
-            case (current_state)
-
-				//S_PLOT_TRAILER: next_state = (swap) ? S_RESTART : S_PLOT_TRAILER;
-				//S_RESTART: next_state = S_PLOT_WAIT;
-				//S_PLOT_WAIT: next_state = (swap) ? S_PLOT_BG : S_PLOT_WAIT;
-				//S_PLOT_BG:	 next_state = done[10] ? S_PLOT_P0 : S_PLOT_BG;
-				//S_PLOT_BLITZ_HOOK: next_state = done[11] ? S_PLOT_BLITZ: S_PLOT_BLITZ_HOOK;		
-		    
-		    S_PLOT_BLITZ: next_state = done[0] ? S_PLOT_HP: S_PLOT_BLITZ; 
-		    
-		   //need to eliminate s_plot_HP probably we don't even neet the always statement!
-		    
-				//S_PLOT_HP: next_state = done[14] ? S_PLOT_GAMEOVER: S_PLOT_HP;
-				//S_PLOT_GAMEOVER:next_state = gameOver ? (done[18] ? S_PLOT_ONES: S_PLOT_GAMEOVER) : S_PLOT_ONES;
-				//S_PLOT_ONES:	next_state = done[15] ? S_PLOT_TENS: S_PLOT_ONES;
-				//S_PLOT_TENS: 	next_state = done[16] ? S_PLOT_HUNDRES: S_PLOT_TENS;
-				//S_PLOT_HUNDRES: next_state = done[17] ? S_PLOT_WAIT: S_PLOT_HUNDRES;
-            default:     next_state = S_PLOT_WAIT;
-
-		endcase
-
-    end // state_table
+	localparam S_PLOT_WAIT = 5'd0;
+	localparam S_PLOT_BLITZ = 5'd11;
+	localparam S_PLOT_TRAILER = 5'd11;
 	
-	always@(*)
-    begin
-	plot = 19'b0;
-	restart = 1'b0;
-			case (current_state)				
-				//S_PLOT_BG:		plot[10]=1'b1;
-				S_PLOT_BLITZ: 	plot[0]=1'b1;
-				//S_PLOT_HP:		plot[14]=1'b1;
-				//S_PLOT_TRAILER:	plot[13]=1'b1;
-				//S_PLOT_ONES:   	plot[15]=1'b1;
-				//S_PLOT_TENS:  	plot[16]=1'b1;
-				//S_PLOT_HUNDRES: plot[17]=1'b1;
-				default: plot = 19'b0;
-		endcase
-    end 
-
 	// current_state registers
     always@(posedge clk)
     begin
@@ -145,18 +95,19 @@ module graph
 	// *mux
 	always@(posedge clk)
     begin
-			case (current_state)
-				//S_PLOT_BG:	    	begin x=plot_x_bg; y=plot_y_bg; colour=colour_bg; writeEn_vga=writeEn[10];		end
-				S_PLOT_BLITZ:   	begin x=plot_x_b;  y=plot_y_b;  colour=colour_b;  writeEn_vga=writeEn[0];  		end
-				//S_PLOT_HP:      	begin x=plot_x_hp; y=plot_y_hp; colour=colour_hp; writeEn_vga=writeEn[14];		end
-				//S_PLOT_TRAILER:   	begin x=plot_x_tl; y=plot_y_tl; colour=colour_tl; writeEn_vga=writeEn[13];		end
-				//S_PLOT_ONES:   		begin x=plot_x_so; y=plot_y_so; colour=colour_so; writeEn_vga=writeEn[15];		end
-				//S_PLOT_TENS:  	 	begin x=plot_x_st; y=plot_y_st; colour=colour_st; writeEn_vga=writeEn[16];		end
-				//S_PLOT_HUNDRES:   	begin x=plot_x_sh; y=plot_y_sh; colour=colour_sh; writeEn_vga=writeEn[17];		end
+		case (current_state)
+			S_PLOT_BLITZ:   	
+				begin 
+				x=plot_x_p;  
+				y=plot_y_p;  
+				colour=colour_p;  
+				writeEn_vga=writeEn[0];  		
+				end
 		endcase
     end 
 	
 	wire swap;
+	
 	// Create an Instance of a VGA controller - there can be only one!
 	// Define the number of colours as well as the initial background
 	// image file (.MIF) for the controller.
@@ -170,18 +121,20 @@ module graph
 			.y(y),
 			.plot(writeEn_vga),
 			 //Signals for the DAC to drive the monitor. 
-			.VGA_R(VGA_R),
-			.VGA_G(VGA_G),
-			.VGA_B(VGA_B),
-			.VGA_HS(VGA_HS),
-			.VGA_VS(VGA_VS),
-			.VGA_BLANK(VGA_BLANK_N),
-			.VGA_SYNC(VGA_SYNC_N),
-			.VGA_CLK(VGA_CLK));
-		defparam VGA.RESOLUTION = "320x240";
-		defparam VGA.MONOCHROME = "FALSE";
-		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
-		defparam VGA.BACKGROUND_IMAGE = "background.mif";
+			.VGA_R(VGA_R), 
+ 			.VGA_G(VGA_G), 
+ 			.VGA_B(VGA_B), 
+			.VGA_HS(VGA_HS), 
+			.VGA_VS(VGA_VS), 
+			.VGA_BLANK(VGA_BLANK_N), 
+			.VGA_SYNC(VGA_SYNC_N), 
+			.VGA_CLK(VGA_CLK));  	
+			
+ 	defparam VGA.RESOLUTION = "160x120"; 
+ 	defparam VGA.MONOCHROME = "FALSE"; 
+ 	defparam VGA.BITS_PER_COLOUR_CHANNEL = 1; 
+	defparam VGA.BACKGROUND_IMAGE = "background.mif"; 
+
 	
 	// Put your code here. Your code should produce signals x,y,colour and writeEn
 	// for the VGA controller, in addition to any other functionality your design may require.
