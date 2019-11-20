@@ -47,11 +47,11 @@ module Project
 	reg [8:0] x;
 	reg [7:0] y;
 	
-	wire [0:0]	writeEn; 
+	wire [1:0]	writeEn; 
 	reg writeEn_vga;
 	
-	reg [0:0]	plot; 
-	wire [0:0] done;
+	reg [10:0]	plot=1'b1; 
+	wire [10:0] done;
 	wire clk;
 	wire frame; // empty for now
 	
@@ -79,12 +79,97 @@ module Project
 	prince_move 	motion(go_up, go_down, clk, frame, resetn, blitz_y);
 	prince_gu		p_gu(clk, blitz_y, resetn, plot[0], colour_p, plot_x_p, plot_y_p, writeEn[0], done[0]);
 
-	reg [4:0] current_state, next_state;
-	localparam S_PLOT_WAIT = 5'd0;
-	localparam S_PLOT_BLITZ = 5'd11;
-	localparam S_PLOT_TRAILER = 5'd11;
 	
-	// current_state registers
+	// *background_gu  
+	wire [8:0] plot_x_bg;
+	wire [7:0] plot_y_bg;	
+	wire [2:0] colour_bg ;
+	background_gu bg_gu(frame,clk,resetn,plot[1],colour_bg,plot_x_bg,plot_y_bg,writeEn[1],done[1]);
+	
+	// *FSM
+	reg [4:0] current_state, next_state;
+localparam  S_PLOT_WAIT	     		= 5'd0, 
+//				S_PLOT_BG	     		= 5'd1, 
+//           S_PLOT_P0        		= 5'd2, 
+//				S_PLOT_P1        		= 5'd3, 
+//				S_PLOT_P2 		 		= 5'd4, 
+//				S_PLOT_P3        		= 5'd5, 
+//				S_PLOT_P4        		= 5'd6, 
+//				S_PLOT_P5        		= 5'd7, 
+//				S_PLOT_P6        		= 5'd8, 
+//				S_PLOT_P7        		= 5'd9,
+//				S_PLOT_P8        		= 5'd10,
+				S_PLOT_BLITZ     		= 5'd11,
+//				S_PLOT_BLITZ_HOOK		= 5'd12,
+//				S_PLOT_BLITZ_ARM		= 5'd13,
+				S_PLOT_TRAILER			= 5'd14;
+//				S_RESTART				= 5'd15,
+//				S_PLOT_HP				= 5'd16,
+//				S_PLOT_ONES				= 5'd17,
+//				S_PLOT_TENS				= 5'd18,
+//				S_PLOT_HUNDRES			= 5'd19,
+//				S_PLOT_GAMEOVER			= 5'd20;
+//			
+//				
+//	always@(*)
+//    begin: state_table 
+//            case (current_state)
+//				S_PLOT_TRAILER: next_state = (swap) ? S_RESTART : S_PLOT_TRAILER;
+//				S_RESTART: next_state = S_PLOT_WAIT;
+//				S_PLOT_WAIT: next_state = (swap) ? S_PLOT_BG : S_PLOT_WAIT;
+//				S_PLOT_BG:	 next_state = done[10] ? S_PLOT_P0 : S_PLOT_BG;
+//				S_PLOT_P0: next_state = done[1] ? S_PLOT_P1: S_PLOT_P0;   
+//				S_PLOT_P1: next_state = done[2] ? S_PLOT_P2: S_PLOT_P1;
+//				S_PLOT_P2: next_state = done[3] ? S_PLOT_P3: S_PLOT_P2;
+//				S_PLOT_P3: next_state = done[4] ? S_PLOT_P4: S_PLOT_P3;
+//				S_PLOT_P4: next_state = done[5] ? S_PLOT_P5: S_PLOT_P4;
+//				S_PLOT_P5: next_state = done[6] ? S_PLOT_P6: S_PLOT_P5;
+//				S_PLOT_P6: next_state = done[7] ? S_PLOT_P7: S_PLOT_P6;
+//				S_PLOT_P7: next_state = done[8] ? S_PLOT_P8: S_PLOT_P7;
+//				S_PLOT_P8: next_state = done[9] ? S_PLOT_BLITZ_ARM: S_PLOT_P8;
+//				S_PLOT_BLITZ_ARM: next_state = done[12] ? S_PLOT_BLITZ_HOOK: S_PLOT_BLITZ_ARM;
+//				S_PLOT_BLITZ_HOOK: next_state = done[11] ? S_PLOT_BLITZ: S_PLOT_BLITZ_HOOK;		
+//				S_PLOT_BLITZ: next_state = done[0] ? S_PLOT_HP: S_PLOT_BLITZ;
+//				S_PLOT_HP: next_state = done[14] ? S_PLOT_GAMEOVER: S_PLOT_HP;
+//				S_PLOT_GAMEOVER:next_state = gameOver ? (done[18] ? S_PLOT_ONES: S_PLOT_GAMEOVER) : S_PLOT_ONES;
+//				S_PLOT_ONES:	next_state = done[15] ? S_PLOT_TENS: S_PLOT_ONES;
+//				S_PLOT_TENS: 	next_state = done[16] ? S_PLOT_HUNDRES: S_PLOT_TENS;
+//				S_PLOT_HUNDRES: next_state = done[17] ? S_PLOT_WAIT: S_PLOT_HUNDRES;
+//            default:     next_state = S_PLOT_WAIT;
+//		endcase
+//    end // state_table
+//	
+//	always@(*)
+//    begin
+//	plot = 19'b0;
+//	restart = 1'b0;
+//			case (current_state)				
+//				S_PLOT_BG:		plot[10]=1'b1;
+//				S_PLOT_BLITZ: 	plot[0]=1'b1;
+//				S_PLOT_P0: 		plot[1]=1'b1;
+//				S_PLOT_P1: 		plot[2]=1'b1;
+//				S_PLOT_P2: 		plot[3]=1'b1;
+//				S_PLOT_P3: 		plot[4]=1'b1;
+//				S_PLOT_P4: 		plot[5]=1'b1;
+//				S_PLOT_P5: 		plot[6]=1'b1;
+//				S_PLOT_P6: 		plot[7]=1'b1;
+//				S_PLOT_P7: 		plot[8]=1'b1;
+//				S_PLOT_P8: 		plot[9]=1'b1;
+//				S_PLOT_BLITZ_HOOK: plot[11]=1'b1;
+//				S_PLOT_BLITZ_ARM:  plot[12]=1'b1;
+//				S_PLOT_HP:		plot[14]=1'b1;
+//				S_RESTART:		restart = 1'b1;
+//				S_PLOT_TRAILER:	plot[13]=1'b1;
+//				S_PLOT_ONES:   	plot[15]=1'b1;
+//				S_PLOT_TENS:  	plot[16]=1'b1;
+//				S_PLOT_HUNDRES: plot[17]=1'b1;
+//				S_PLOT_GAMEOVER: plot[18]=1'b1;
+//				
+//				default: plot = 19'b0;
+//		endcase
+//    end 
+
+// current_state registers
     always@(posedge clk)
     begin
 		if(SW[0] == 0)
@@ -92,6 +177,8 @@ module Project
         else
             current_state <= next_state;
     end 
+
+
 	// *mux
 	always@(posedge clk)
     begin
