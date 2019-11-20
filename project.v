@@ -88,109 +88,48 @@ module Project
 	
 	// *FSM
 	reg [4:0] current_state, next_state;
-localparam  S_PLOT_WAIT	     		= 5'd0, 
-//				S_PLOT_BG	     		= 5'd1, 
-//           S_PLOT_P0        		= 5'd2, 
-//				S_PLOT_P1        		= 5'd3, 
-//				S_PLOT_P2 		 		= 5'd4, 
-//				S_PLOT_P3        		= 5'd5, 
-//				S_PLOT_P4        		= 5'd6, 
-//				S_PLOT_P5        		= 5'd7, 
-//				S_PLOT_P6        		= 5'd8, 
-//				S_PLOT_P7        		= 5'd9,
-//				S_PLOT_P8        		= 5'd10,
-				S_PLOT_BLITZ     		= 5'd11,
-//				S_PLOT_BLITZ_HOOK		= 5'd12,
-//				S_PLOT_BLITZ_ARM		= 5'd13,
-				S_PLOT_TRAILER			= 5'd14;
-//				S_RESTART				= 5'd15,
-//				S_PLOT_HP				= 5'd16,
-//				S_PLOT_ONES				= 5'd17,
-//				S_PLOT_TENS				= 5'd18,
-//				S_PLOT_HUNDRES			= 5'd19,
-//				S_PLOT_GAMEOVER			= 5'd20;
+	localparam  S_PLOT_WAIT	     		= 5'd0, 
+				S_PLOT_BG	     		= 5'd1, 
+				S_PLOT_BLITZ     		= 5'd2,
+
 //			
 //				
-//	always@(*)
-//    begin: state_table 
-//            case (current_state)
-//				S_PLOT_TRAILER: next_state = (swap) ? S_RESTART : S_PLOT_TRAILER;
-//				S_RESTART: next_state = S_PLOT_WAIT;
-//				S_PLOT_WAIT: next_state = (swap) ? S_PLOT_BG : S_PLOT_WAIT;
-//				S_PLOT_BG:	 next_state = done[10] ? S_PLOT_P0 : S_PLOT_BG;
-//				S_PLOT_P0: next_state = done[1] ? S_PLOT_P1: S_PLOT_P0;   
-//				S_PLOT_P1: next_state = done[2] ? S_PLOT_P2: S_PLOT_P1;
-//				S_PLOT_P2: next_state = done[3] ? S_PLOT_P3: S_PLOT_P2;
-//				S_PLOT_P3: next_state = done[4] ? S_PLOT_P4: S_PLOT_P3;
-//				S_PLOT_P4: next_state = done[5] ? S_PLOT_P5: S_PLOT_P4;
-//				S_PLOT_P5: next_state = done[6] ? S_PLOT_P6: S_PLOT_P5;
-//				S_PLOT_P6: next_state = done[7] ? S_PLOT_P7: S_PLOT_P6;
-//				S_PLOT_P7: next_state = done[8] ? S_PLOT_P8: S_PLOT_P7;
-//				S_PLOT_P8: next_state = done[9] ? S_PLOT_BLITZ_ARM: S_PLOT_P8;
-//				S_PLOT_BLITZ_ARM: next_state = done[12] ? S_PLOT_BLITZ_HOOK: S_PLOT_BLITZ_ARM;
-//				S_PLOT_BLITZ_HOOK: next_state = done[11] ? S_PLOT_BLITZ: S_PLOT_BLITZ_HOOK;		
-//				S_PLOT_BLITZ: next_state = done[0] ? S_PLOT_HP: S_PLOT_BLITZ;
-//				S_PLOT_HP: next_state = done[14] ? S_PLOT_GAMEOVER: S_PLOT_HP;
-//				S_PLOT_GAMEOVER:next_state = gameOver ? (done[18] ? S_PLOT_ONES: S_PLOT_GAMEOVER) : S_PLOT_ONES;
-//				S_PLOT_ONES:	next_state = done[15] ? S_PLOT_TENS: S_PLOT_ONES;
-//				S_PLOT_TENS: 	next_state = done[16] ? S_PLOT_HUNDRES: S_PLOT_TENS;
-//				S_PLOT_HUNDRES: next_state = done[17] ? S_PLOT_WAIT: S_PLOT_HUNDRES;
-//            default:     next_state = S_PLOT_WAIT;
-//		endcase
-//    end // state_table
-//	
-//	always@(*)
-//    begin
-//	plot = 19'b0;
-//	restart = 1'b0;
-//			case (current_state)				
-//				S_PLOT_BG:		plot[10]=1'b1;
-//				S_PLOT_BLITZ: 	plot[0]=1'b1;
-//				S_PLOT_P0: 		plot[1]=1'b1;
-//				S_PLOT_P1: 		plot[2]=1'b1;
-//				S_PLOT_P2: 		plot[3]=1'b1;
-//				S_PLOT_P3: 		plot[4]=1'b1;
-//				S_PLOT_P4: 		plot[5]=1'b1;
-//				S_PLOT_P5: 		plot[6]=1'b1;
-//				S_PLOT_P6: 		plot[7]=1'b1;
-//				S_PLOT_P7: 		plot[8]=1'b1;
-//				S_PLOT_P8: 		plot[9]=1'b1;
-//				S_PLOT_BLITZ_HOOK: plot[11]=1'b1;
-//				S_PLOT_BLITZ_ARM:  plot[12]=1'b1;
-//				S_PLOT_HP:		plot[14]=1'b1;
-//				S_RESTART:		restart = 1'b1;
-//				S_PLOT_TRAILER:	plot[13]=1'b1;
-//				S_PLOT_ONES:   	plot[15]=1'b1;
-//				S_PLOT_TENS:  	plot[16]=1'b1;
-//				S_PLOT_HUNDRES: plot[17]=1'b1;
-//				S_PLOT_GAMEOVER: plot[18]=1'b1;
-//				
-//				default: plot = 19'b0;
-//		endcase
-//    end 
+	always@(*)
+   begin: state_table 
+           case (current_state)
+				S_PLOT_WAIT: next_state = (swap) ? S_PLOT_BG : S_PLOT_WAIT;
+				S_PLOT_BG:	 next_state = done[1] ? S_PLOT_BLITZ : S_PLOT_BG;		
+				S_PLOT_BLITZ: next_state = done[0] ? S_PLOT_WAIT : S_PLOT_BLITZ;
+            default:     next_state = S_PLOT_WAIT;
+		endcase
+    end // state_table
+	
+	always@(*)
+   begin
+	plot = 19'b0;
+			case (current_state)				
+				S_PLOT_BG:	plot[10]=1'b1;
+				S_PLOT_BLITZ: 	plot[0]=1'b1;
+				default: plot = 19'b0;
+			endcase
+   end 
 
 // current_state registers
     always@(posedge clk)
     begin
 		if(SW[0] == 0)
-		    current_state <= S_PLOT_TRAILER;
+		    current_state <= S_PLOT_WAIT;
         else
             current_state <= next_state;
     end 
 
 
-	// *mux
 	always@(posedge clk)
     begin
-		case (current_state)
-			S_PLOT_BLITZ:   	
-				begin 
-				x=plot_x_p;  
-				y=plot_y_p;  
-				colour=colour_p;  
-				writeEn_vga=writeEn[0];  		
-				end
-		endcase
+			case (current_state)
+				S_PLOT_BG:	    	begin x=plot_x_bg; y=plot_y_bg; colour=colour_bg; writeEn_vga=writeEn[10];		end
+				S_PLOT_BLITZ:   	begin x=plot_x_b;  y=plot_y_b;  colour=colour_b;  writeEn_vga=writeEn[0];  		end			
+			endcase
     end 
 	
 	wire swap;
