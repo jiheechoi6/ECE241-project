@@ -115,7 +115,7 @@ module b_finite_state_machine(
 				writeEn = 1'b1;
             end
 			S_CYCLE_DONE: begin
-				done = 1;
+				done = 1'b1;
 			end
 			
         endcase
