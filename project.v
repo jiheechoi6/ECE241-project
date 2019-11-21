@@ -50,7 +50,7 @@ module Project
 	wire [1:0]	writeEn; 
 	reg writeEn_vga;
 	
-	reg [10:0]	plot=1'b1; 
+	reg [10:0]	plot; //0 -> prince, 1-> background 
 	wire [10:0] done;
 	wire clk;
 	wire frame; // empty for now
