@@ -108,7 +108,7 @@ module Project
    begin
 	plot = 19'b0;
 			case (current_state)				
-				S_PLOT_BG:	plot[10]=1'b1;
+				S_PLOT_BG:	plot[1]=1'b1;
 				S_PLOT_BLITZ: 	plot[0]=1'b1;
 				default: plot = 19'b0;
 			endcase
@@ -127,8 +127,8 @@ module Project
 	always@(posedge clk)
     begin
 			case (current_state)
-				S_PLOT_BG:	    	begin x=plot_x_bg; y=plot_y_bg; colour=colour_bg; writeEn_vga=writeEn[10];		end
-				S_PLOT_BLITZ:   	begin x=plot_x_b;  y=plot_y_b;  colour=colour_b;  writeEn_vga=writeEn[0];  		end			
+				S_PLOT_BG:	    	begin x=plot_x_bg; y=plot_y_bg; colour=colour_bg; writeEn_vga=writeEn[1];		end
+				S_PLOT_BLITZ:   	begin x=plot_x_p;  y=plot_y_p;  colour=colour_p;  writeEn_vga=writeEn[0];  		end			
 			endcase
     end 
 	
