@@ -44,7 +44,7 @@ module prince_gu
 	
 	b_data_path dp1(
 	.x_in(9'd10),
-	.y_in(y_in),
+		.y_in(9'd10),	//.y_in(y_in),
 	.resetn(resetn),
 	.clk(clk),
 	.x_increment(x_increment),
