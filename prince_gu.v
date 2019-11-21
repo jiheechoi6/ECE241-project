@@ -44,7 +44,7 @@ module prince_gu
 	
 	b_data_path dp1(
 	.x_in(9'd10),
-		.y_in(9'd10),	//.y_in(y_in),
+	.y_in(9'd10),	//.y_in(y_in),
 	.resetn(resetn),
 	.clk(clk),
 	.x_increment(x_increment),
@@ -160,7 +160,7 @@ module b_data_path(
 	
 	wire [10:0] address;
 	assign address = {y_increment, x_increment};
-	prince_image bi1(address,clk,3'b0,1'b0,colour_out);
+	prince_img bi1(address,clk,3'b0,1'b0,colour_out);
 	
 	always@(posedge clk) begin
 		if(!resetn) begin
